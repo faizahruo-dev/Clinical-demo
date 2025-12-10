@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Clinical Documentation Assistant (Portfolio Demo)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 900px; 
+            margin: auto; 
+            padding: 20px; 
+            background: #f0f4f8;
+        }
+
+        h1 {
+            text-align: center; 
+            color: #2c3e50;
+        }
+
+        label {
+            font-weight: bold; 
+            display: block; 
+            margin-top: 10px; 
+            color: #34495e;
+        }
+
+        select, button, textarea {
+            width: 100%; 
+            padding: 10px; 
+            margin-top: 5px; 
+            margin-bottom: 10px; 
+            font-size: 16px; 
+            border-radius: 8px; 
+            border: 1px solid #bdc3c7; 
+            box-sizing: border-box;
+        }
+
+        select {
+            background-color: #ecf0f1; 
+        }
+
+        textarea {
+            background-color: #ffffff; 
+            resize: vertical;
+        }
+
+        button {
+            background-color: #2980b9; 
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background-color: #3498db; 
+        }
+
+        #output {
+            height: 250px;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #bdc3c7;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <h1>AI Clinical Documentation Assistant (Portfolio Demo)</h1>
+
+    <div class="container">
+        <label>Region:</label>
+        <select id="region" onchange="setExampleInput()">
+            <option value="Nigeria">Nigeria</option>
+            <option value="Canada">Canada</option>
+            <option value="UK">UK</option>
+            <option value="US">US</option>
+        </select>
+
+        <label>Feature / Note Type:</label>
+        <select id="feature" onchange="updateOutputColor(); setExampleInput()">
+            <option value="nursingNote">Nursing Note (SOAP)</option>
+            <option value="handover">Handover (SBAR)</option>
+            <option value="incident">Incident Report</option>
+            <option value="summary">Clinical Summary</option>
+            <option value="carePlan">Care Plan</option>
+        </select>
+
+        <label>Patient Input (auto-filled for demo):</label>
+        <textarea id="inputText" placeholder="Example patient observation..."></textarea>
+
+        <button onclick="generateNote()">Generate Note</button>
+        <button onclick="downloadPDF()">Download PDF</button>
+
+        <label>Output:</label>
+        <textarea id="output" readonly placeholder="Generated note will appear here..."></textarea>
+    </div>
+
+    <script>
+        // Color-coded output
+        function updateOutputColor() {
+            const feature = document.getElementById("feature").value;
+            const output = document.getElementById("output");
+            switch(feature) {
+                case "nursingNote": output.style.backgroundColor = "#fff9e6"; break;
+                case "handover": output.style.backgroundColor = "#f3e6ff"; break;
+                case "incident": output.style.backgroundColor = "#ffe6e6"; break;
+                case "summary": output.style.backgroundColor = "#e6ffe6"; break;
+                case "carePlan": output.style.backgroundColor = "#e6f9ff"; break;
+                default: output.style.backgroundColor = "#ffffff";
+            }
+        }
+
+        // Mock notes per feature + region
+        const mockNotes = {
+            nursingNote: {
+                Nigeria: "SOAP Note (Nigeria):\nS: Patient complains of fever and headache.\nO: Temp 38.5°C, pulse 100 bpm.\nA: Suspected malaria.\nP: Paracetamol 500mg TDS, monitor temperature, advise hydration.",
+                Canada: "SOAP Note (Canada):\nS: Patient reports headache and mild fever.\nO: Temp 38°C, BP 120/80.\nA: Viral infection suspected.\nP: Acetaminophen 500mg TDS, rest, follow-up in 24h.",
+                UK: "SOAP Note (UK):\nS: Patient with persistent cough and mild fever.\nO: Temp 37.8°C, respiratory rate 18.\nA: Possible respiratory infection.\nP: Monitor symptoms, advise hydration and rest.",
+                US: "SOAP Note (US):\nS: Patient reports dizziness and fever.\nO: Temp 38.2°C, pulse 102 bpm.\nA: Suspected viral illness.\nP: Symptomatic treatment, monitor vitals, follow-up tomorrow."
+            },
+            handover: {
+                Nigeria: "SBAR Handover (Nigeria):\nS: Patient has high fever and headache.\nB: Malaria suspected, started on antimalarials.\nA: Monitor vitals and response.\nR: Next nurse to continue monitoring and report changes.",
+                Canada: "SBAR Handover (Canada):\nS: Patient presents with mild fever and headache.\nB: Possible viral infection, vitals stable.\nA: Monitor patient symptoms.\nR: Inform doctor if symptoms worsen.",
+                UK: "SBAR Handover (UK):\nS: Patient complains of chest discomfort.\nB: Recent mild viral symptoms.\nA: Monitor vitals and oxygen.\nR: Notify doctor if condition changes.",
+                US: "SBAR Handover (US):\nS: Patient reports nausea and fever.\nB: Stable vitals, suspected viral.\nA: Monitor fluid intake and temperature.\nR: Continue standard observation protocol."
+            },
+            incident: {
+                Nigeria: "Incident Report (Nigeria):\nDate/Time: 10-Dec-2025 14:00\nPatient: John Doe\nDescription: Fall in ward.\nActions Taken: Assisted patient, checked vitals, reported to supervisor.\nRecommendations: Keep bed rails up, increase staff observation.",
+                Canada: "Incident Report (Canada):\nDate/Time: 10-Dec-2025 14:00\nPatient: Jane Smith\nDescription: Slip in bathroom.\nActions Taken: Provided first aid, reported incident.\nRecommendations: Place non-slip mats, monitor patient safety.",
+                UK: "Incident Report (UK):\nDate/Time: 10-Dec-2025 14:00\nPatient: Mark Allen\nDescription: Minor fall.\nActions Taken: Assisted, vitals stable.\nRecommendations: Monitor floor hazards, increase supervision.",
+                US: "Incident Report (US):\nDate/Time: 10-Dec-2025 14:00\nPatient: Lisa Wong\nDescription: Patient tripped over IV line.\nActions Taken: Checked vitals, reported.\nRecommendations: Ensure clear walkways, monitor patients closely."
+            },
+            summary: {
+                Nigeria: "Clinical Summary (Nigeria):\nPatient admitted with fever and headache. Vital signs recorded. Differential diagnosis includes malaria and viral infection. Treatment started with antimalarials and supportive care.",
+                Canada: "Clinical Summary (Canada):\nPatient presents with mild fever and headache. Vitals stable. Probable viral infection. Symptomatic treatment started. Monitor patient for 24h.",
+                UK: "Clinical Summary (UK):\nPatient presents with mild cough and fever. Vitals stable. Monitor respiratory status and provide supportive care.",
+                US: "Clinical Summary (US):\nPatient with dizziness and low-grade fever. Vitals stable. Symptomatic treatment initiated. Follow up in 24 hours."
+            },
+            carePlan: {
+                Nigeria: "Care Plan (Nigeria):\nDiagnosis: Malaria suspected\nInterventions: Administer antimalarials, monitor vitals, educate patient\nOutcomes: Reduce fever, patient hydration maintained",
+                Canada: "Care Plan (Canada):\nDiagnosis: Viral infection suspected\nInterventions: Symptomatic treatment, monitor vitals, hydration\nOutcomes: Symptom relief, maintain hydration and comfort",
+                UK: "Care Plan (UK):\nDiagnosis: Mild respiratory infection\nInterventions: Monitor oxygen, provide fluids, rest\nOutcomes: Maintain stable vitals, symptom improvement",
+                US: "Care Plan (US):\nDiagnosis: Viral illness suspected\nInterventions: Monitor symptoms, provide hydration, symptomatic care\nOutcomes: Symptom relief, maintain patient stability"
+            }
+        };
+
+        // Pre-fill patient input for demo
+        const exampleInputs = {
+            Nigeria: {
+                nursingNote: "Fever, headache, body weakness.",
+                handover: "Patient has high fever, headache, and chills.",
+                incident: "Patient fell while walking to the bathroom.",
+                summary: "Admitted with fever and headache, started on antimalarials.",
+                carePlan: "Monitor temperature, administer paracetamol, ensure hydration."
+            },
+            Canada: {
+                nursingNote: "Mild headache and fever, feels tired.",
+                handover: "Patient reports mild fever and fatigue.",
+                incident: "Patient slipped in the shower.",
+                summary: "Symptoms indicate possible viral infection, vitals stable.",
+                carePlan: "Provide acetaminophen, rest, monitor vitals."
+            },
+            UK: {
+                nursingNote: "Persistent cough and mild fever.",
+                handover: "Patient complains of chest discomfort.",
+                incident: "Minor fall in ward.",
+                summary: "Vitals stable, monitor respiratory symptoms.",
+                carePlan: "Provide fluids, monitor oxygen, advise rest."
+            },
+            US: {
+                nursingNote: "Dizziness and low-grade fever.",
+                handover: "Patient reports nausea and fever.",
+                incident: "Patient tripped over IV line.",
+                summary: "Vitals stable, symptomatic treatment initiated.",
+                carePlan: "Monitor symptoms, provide hydration, symptomatic care."
+            }
+        };
+
+        function setExampleInput() {
+            const region = document.getElementById("region").value;
+            const feature = document.getElementById("feature").value;
+            const inputText = document.getElementById("inputText");
+
+            if (exampleInputs[region] && exampleInputs[region][feature]) {
+                inputText.value = exampleInputs[region][feature];
+            } else {
+                inputText.value = "";
+            }
+        }
+
+        function generateNote() {
+            const region = document.getElementById("region").value;
+            const feature = document.getElementById("feature").value;
+            const inputText = document.getElementById("inputText").value;
+            const output = document.getElementById("output");
+
+            if (!inputText) {
+                alert("Please enter some input.");
+                return;
+            }
+
+            const note = (mockNotes[feature] && mockNotes[feature][region])
+                ? mockNotes[feature][region]
+                : "Generated note example.\nPatient info: " + inputText;
+
+            output.value = note;
+        }
+
+        function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const output = document.getElementById("output").value;
+
+            if (!output) {
+                alert("No note to download. Please generate a note first.");
+                return;
+            }
+
+            doc.setFontSize(12);
+            doc.text(output, 10, 20, { maxWidth: 180 });
+            doc.save("Clinical_Note.pdf");
+        }
+
+        window.onload = function() {
+            updateOutputColor();
+            setExampleInput();
+        };
+    </script>
+</body>
+</html>
